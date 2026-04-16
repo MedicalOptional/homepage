@@ -1,11 +1,27 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../widgets/buscador.dart';
+import '../widgets/categorias_horizontal.dart';
+import '../widgets/banner_slider.dart';
+import '../widgets/grid_productos.dart';
 import 'categorias/masculino.dart';
 import 'categorias/femenino.dart';
 import 'categorias/infantiles.dart';
 import 'login.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<dynamic> _products = [];
+  bool _isLoading = true;
+  String? _error;
+
+  static const Color _accentColor = Color(0xFF1A1A2E);
 
   static const List<_CategoryItem> _categories = [
     _CategoryItem(
@@ -31,6 +47,28 @@ class HomeScreen extends StatelessWidget {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchProducts();
+  }
+
+  Future<void> _fetchProducts() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final data = await ApiService.getProductsByCategory('all');
+      if (mounted) setState(() => _products = data);
+    } catch (_) {
+      if (mounted)
+        setState(() => _error = 'No se pudieron cargar los productos');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _navigateTo(BuildContext context, int index) {
     Widget screen;
     switch (index) {
@@ -54,7 +92,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: _accentColor,
         elevation: 0,
         title: const Text(
           'Tienda',
@@ -67,11 +105,8 @@ class HomeScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+            icon:
+                const Icon(Icons.shopping_cart_outlined, color: Colors.white),
             onPressed: () {},
           ),
           IconButton(
@@ -86,124 +121,67 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Banner(),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 28, 20, 16),
-                child: Text(
-                  'Categorías',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
-                    letterSpacing: -0.3,
+      body: RefreshIndicator(
+        color: _accentColor,
+        onRefresh: _fetchProducts,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Buscador(),
+                  const CategoriasHorizontal(),
+                  const BannerSlider(),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 28, 20, 0),
+                    child: Text(
+                      'Categorías',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A2E),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                   ),
-                ),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, i) {
+                      final cat = _categories[i];
+                      return _CategoryCard(
+                        item: cat,
+                        onTap: () => _navigateTo(context, i),
+                      );
+                    },
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 28, 20, 0),
+                    child: Text(
+                      'Productos',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1A1A2E),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                itemCount: _categories.length,
-                itemBuilder: (context, i) {
-                  final cat = _categories[i];
-                  return _CategoryCard(
-                    item: cat,
-                    onTap: () => _navigateTo(context, i),
-                  );
-                },
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
+            ),
+            GridProductos(
+              products: _products,
+              isLoading: _isLoading,
+              error: _error,
+              onRetry: _fetchProducts,
+              accentColor: _accentColor,
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _Banner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(20),
-      height: 160,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -20,
-            bottom: -20,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 40,
-            top: -30,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.04),
-              ),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Nueva colección',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Temporada\nPrimavera 2025',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'Descubre las últimas tendencias',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -221,7 +199,7 @@ class _CategoryCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        height: 120,
+        height: 110,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
@@ -259,13 +237,13 @@ class _CategoryCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(item.icon, color: Colors.white, size: 28),
+                      child: Icon(item.icon, color: Colors.white, size: 24),
                     ),
                     const SizedBox(width: 16),
                     Column(
@@ -276,7 +254,7 @@ class _CategoryCard extends StatelessWidget {
                           item.label,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.3,
                           ),
@@ -287,7 +265,6 @@ class _CategoryCard extends StatelessWidget {
                           style: TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
-                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
