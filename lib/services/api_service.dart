@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String _baseUrl =
-      'https://areaeyjyaykimzknaslz.supabase.co/functions/v1/api';
+  static const String _baseUrl = 'http://localhost:3000';
 
   static Future<Map<String, dynamic>> login(
       String email, String password) async {
